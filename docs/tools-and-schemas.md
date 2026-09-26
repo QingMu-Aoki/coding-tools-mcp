@@ -6,7 +6,7 @@ properties, annotations, and error codes with the contract.
 
 ## Fixed inventory
 
-The default catalog contains exactly 18 tools:
+The default catalog contains exactly 27 tools:
 
 - `server_info`: server, workspace, automatic project context, policy, runtime,
   auth, protocol, and fixed-catalog metadata.
@@ -27,10 +27,19 @@ The default catalog contains exactly 18 tools:
 - `git_show`: bounded revision metadata/content/diff.
 - `git_blame`: structured bounded line attribution.
 - `request_permissions`: report elicitation status without silently granting.
+- `zotero_search`: search Zotero metadata through the localhost Zotero MCP bridge.
+- `zotero_get_collections`: list Zotero collections.
+- `zotero_get_collection_items`: list items in a Zotero collection.
+- `zotero_get_item`: fetch Zotero item metadata by key.
+- `zotero_get_fulltext`: read the primary attachment text for a Zotero item.
+- `zotero_get_annotations`: read highlights and annotations for a Zotero item.
+- `zotero_set_item_collections`: add/remove existing items from collections.
+- `zotero_write_status`: report whether Zotero writes are currently authorized.
+- `zotero_authorize_writes`: request local Zotero write authorization.
 - `view_image`: one MCP image content block plus structured metadata.
 
 `view_image` may be disabled when an installation cannot accept binary image
-content. That capability gate is not a tool profile. The other 17 tools are
+content. That capability gate is not a tool profile. The other 26 tools are
 always advertised, and `listChanged` is `false`.
 
 ## Result envelope

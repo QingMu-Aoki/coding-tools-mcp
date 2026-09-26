@@ -94,6 +94,7 @@ from .telemetry import SessionTelemetry
 from .textutils import DEFAULT_MAX_LINES, TextTruncation, truncate_text_head
 from .tool_results import make_tool_result
 from .transport_stdio import serve_stdio
+from .zotero_bridge import ZoteroBridgeError, bridge
 
 
 SERVER_NAME = "coding-tools-mcp"
@@ -689,6 +690,66 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         title="Request permissions",
         description="Report scoped permission-request status without silently granting operations.",
         read_only=True,
+    ),
+    "zotero_search": ToolSpec(
+        title="Search Zotero",
+        description="Search the local Zotero library through the localhost Zotero MCP bridge.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_get_collections": ToolSpec(
+        title="List Zotero collections",
+        description="List Zotero collections through the localhost Zotero MCP bridge.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_get_collection_items": ToolSpec(
+        title="Get Zotero collection items",
+        description="List items in a Zotero collection.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_get_item": ToolSpec(
+        title="Get Zotero item",
+        description="Fetch Zotero item metadata by item key.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_get_fulltext": ToolSpec(
+        title="Read Zotero full text",
+        description="Read the primary attachment full text for a Zotero item.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_get_annotations": ToolSpec(
+        title="Get Zotero annotations",
+        description="Read annotations and highlights for a Zotero item.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_set_item_collections": ToolSpec(
+        title="Manage Zotero collection membership",
+        description="Add or remove existing Zotero items from collections.",
+        destructive=True,
+        open_world=True,
+    ),
+    "zotero_write_status": ToolSpec(
+        title="Check Zotero write access",
+        description="Report whether downstream Zotero writes are authorized.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_authorize_writes": ToolSpec(
+        title="Authorize Zotero local writes",
+        description="Request Zotero Desktop local write authorization; Zotero may show a confirmation dialog.",
+        open_world=True,
     ),
     "view_image": ToolSpec(
         title="View image",
@@ -1689,6 +1750,47 @@ class Runtime:
             "global_tmp_write": self.global_tmp_write_policy(),
             "warnings": warnings,
         }
+
+    def _zotero_call(self, downstream_tool: str, args: dict[str, Any]) -> dict[str, Any]:
+        clean_args = {key: value for key, value in args.items() if value is not None}
+        try:
+            text = bridge.call(downstream_tool, clean_args)
+        except ZoteroBridgeError as exc:
+            raise ToolFailure(
+                "ZOTERO_BRIDGE_ERROR",
+                str(exc),
+                category="runtime",
+                retryable=True,
+                details={"downstream_tool": downstream_tool, "url": bridge.url},
+            ) from exc
+        return {"ok": True, "summary": text, "downstream_tool": downstream_tool}
+
+    def zotero_search(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_search_items", args)
+
+    def zotero_get_collections(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_get_collections", args)
+
+    def zotero_get_collection_items(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_get_collection_items", args)
+
+    def zotero_get_item(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_get_item_metadata", args)
+
+    def zotero_get_fulltext(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_get_item_fulltext", args)
+
+    def zotero_get_annotations(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_get_annotations", args)
+
+    def zotero_set_item_collections(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_set_item_collections", args)
+
+    def zotero_write_status(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_write_capabilities", args)
+
+    def zotero_authorize_writes(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_authorize_local_writes", args)
 
     def emit_tool_trace(
         self,
@@ -4756,6 +4858,58 @@ def input_schemas() -> dict[str, dict[str, Any]]:
             },
             ["tool_name", "permission", "reason", "arguments"],
         ),
+        "zotero_search": object_schema(
+            {
+                "query": {**string, "minLength": 1},
+                "limit": {**integer, "minimum": 1, "maximum": 100, "default": 10},
+                "collection_key": string,
+                "qmode": {**string, "enum": ["titleCreatorYear", "everything"], "default": "titleCreatorYear"},
+            },
+            ["query"],
+        ),
+        "zotero_get_collections": object_schema(
+            {"limit": {**integer, "minimum": 1, "maximum": 5000, "default": 100}}
+        ),
+        "zotero_get_collection_items": object_schema(
+            {
+                "collection_key": {**string, "minLength": 1},
+                "limit": {**integer, "minimum": 1, "maximum": 1000, "default": 50},
+                "include_subcollections": {**boolean, "default": False},
+                "detail": {**string, "enum": ["keys_only", "summary", "full"], "default": "summary"},
+            },
+            ["collection_key"],
+        ),
+        "zotero_get_item": object_schema(
+            {
+                "item_key": {**string, "minLength": 1},
+                "include_abstract": {**boolean, "default": True},
+                "format": {**string, "enum": ["markdown", "json", "bibtex"], "default": "markdown"},
+            },
+            ["item_key"],
+        ),
+        "zotero_get_fulltext": object_schema(
+            {"item_key": {**string, "minLength": 1}},
+            ["item_key"],
+        ),
+        "zotero_get_annotations": object_schema(
+            {
+                "item_key": {**string, "minLength": 1},
+                "use_pdf_extraction": {**boolean, "default": False},
+                "limit": {**integer, "minimum": 1, "maximum": 5000},
+                "format": {**string, "enum": ["markdown", "json"], "default": "markdown"},
+            },
+            ["item_key"],
+        ),
+        "zotero_set_item_collections": object_schema(
+            {
+                "item_keys": string_array,
+                "add_to": string_array,
+                "remove_from": string_array,
+            },
+            ["item_keys"],
+        ),
+        "zotero_write_status": object_schema(),
+        "zotero_authorize_writes": object_schema(),
         "view_image": object_schema(
             {
                 "path": {**string, "minLength": 1},

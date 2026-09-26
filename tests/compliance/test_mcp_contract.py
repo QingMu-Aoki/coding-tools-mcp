@@ -246,6 +246,15 @@ class MCPContractTests(ComplianceTestCase):
             "git_show": (True, False, True, False),
             "git_blame": (True, False, True, False),
             "request_permissions": (True, False, False, False),
+            "zotero_search": (True, False, True, True),
+            "zotero_get_collections": (True, False, True, True),
+            "zotero_get_collection_items": (True, False, True, True),
+            "zotero_get_item": (True, False, True, True),
+            "zotero_get_fulltext": (True, False, True, True),
+            "zotero_get_annotations": (True, False, True, True),
+            "zotero_set_item_collections": (False, True, False, True),
+            "zotero_write_status": (True, False, True, True),
+            "zotero_authorize_writes": (False, False, False, True),
             "view_image": (True, False, True, False),
         }
         for tool in self.client.list_tools():
