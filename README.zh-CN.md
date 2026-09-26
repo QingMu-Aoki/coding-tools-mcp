@@ -14,42 +14,89 @@
 Coding Tools MCP 是一个**模型中立的编程运行时**，通过
 [Model Context Protocol](https://modelcontextprotocol.io) 对外提供服务：
 文件读取与搜索、结构化多文件补丁、命令执行、交互式命令、git 操作——
-一个服务器，任何 MCP 客户端都能驱动。Claude Desktop、Claude Code、Cursor、
-Cline，或你自己写的 agent，拿到的都是同一套久经考验的 18 个工具：
-限定在单一工作区内，由权限模式层层把关。
+一个服务器，任何 MCP 客户端都能驱动。上游版本提供 18 个核心工具；本 fork
+的 `zotero-bridge` 分支额外加入 14 个经过筛选的 Zotero 工具，因此固定工具
+目录目前共有 32 个工具。
 
-## 修改版 OAuth 分支
+## QingMu-Aoki 修改版：持久化 OAuth + Zotero Bridge
 
-本仓库的 `oauth-refresh-persistence` 分支基于官方 `v0.3.0`。与原版相比，
-主要增加：
+本仓库基于上游 `coding-tools-mcp` `v0.3.0`。`zotero-bridge` 分支包含此前
+`oauth-refresh-persistence` 的改动，并进一步加入到
+[`54yyyu/zotero-mcp`](https://github.com/54yyyu/zotero-mcp) 的本地桥接。
+
+相对于上游 `v0.3.0`，主要增加：
 
 - RFC 7591 动态 OAuth 客户端注册持久化；
 - OAuth `refresh_token` 支持；
 - Access token 默认有效 24 小时，refresh token 默认有效 30 天；
 - refresh token 轮换时保留最初的绝对过期时间，不会无限续期；
-- access token 与 refresh token 使用不同的 `token_use` 标记，避免混用。
+- access token 与 refresh token 使用不同的 `token_use` 标记，避免混用；
+- Zotero 搜索、collection、metadata、全文、annotation、Tag、Note 以及本地写入；
+- Windows 下 Zotero MCP 永久环境变量与登录自动启动脚本。
 
 修改版获取地址：
 
 - 仓库：`https://github.com/QingMu-Aoki/coding-tools-mcp`
-- 分支：`oauth-refresh-persistence`
-- 源码：`https://github.com/QingMu-Aoki/coding-tools-mcp/tree/oauth-refresh-persistence`
+- 推荐分支：`zotero-bridge`
+- 源码：`https://github.com/QingMu-Aoki/coding-tools-mcp/tree/zotero-bridge`
 
 直接获取并运行修改版：
 
 ```bash
-git clone --branch oauth-refresh-persistence --single-branch https://github.com/QingMu-Aoki/coding-tools-mcp.git
+git clone --branch zotero-bridge --single-branch https://github.com/QingMu-Aoki/coding-tools-mcp.git
 cd coding-tools-mcp
 python -m pip install -e ".[desktop]"
 coding-tools-mcp-desktop
 ```
 
 如果只需要服务器，可以执行 `python -m pip install -e .`，然后像原版一样启动
-`coding-tools-mcp`。下面原有的 PyPI/npm 快速安装命令安装的是官方发布版，
-不是这个开发分支。
+`coding-tools-mcp`。下面原有的 PyPI/npm 快速安装命令安装的是官方上游发布版，
+不是本 fork 分支。
 
-OAuth 的完整配置与 refresh token 说明见
-[docs/remote-mcp.md](docs/remote-mcp.md)。
+### Zotero Bridge 配置
+
+Zotero MCP 只监听本机回环地址。ChatGPT 或其他远程 MCP 客户端只连接带认证的
+`coding-tools-mcp`：
+
+```text
+ChatGPT / MCP 客户端
+  -> coding-tools-mcp（OAuth / 带认证的远程入口）
+  -> http://127.0.0.1:8000/mcp
+  -> 54yyyu/zotero-mcp
+  -> Zotero Desktop
+```
+
+建议把 `54yyyu/zotero-mcp` 放在本仓库同级目录，例如：
+
+```text
+chatGPT-WEB/
+  coding-tools-mcp/
+  zotero-mcp-main/
+```
+
+先打开 Zotero Desktop，然后启动下游 Zotero MCP：
+
+```powershell
+cd .\coding-tools-mcp
+.\scripts\start-zotero-mcp-local.ps1
+```
+
+默认下游地址为 `http://127.0.0.1:8000/mcp`。**不要**把 8000 端口通过
+Cloudflare、ngrok 等方式暴露到公网；带认证的 `coding-tools-mcp` 应该是唯一
+远程入口。
+
+Windows 用户还可以一次性执行：
+
+```powershell
+.\scripts\install-zotero-mcp-autostart.ps1
+```
+
+它会永久保存 `ZOTERO_LOCAL=true` 和 bridge URL，并创建用户级的
+`Zotero MCP Local` 登录计划任务。本地写入可以之后通过
+`zotero_authorize_writes` 授权；Zotero Desktop 会弹出确认窗口，并可保存授权。
+
+Zotero Bridge 详细说明见 [docs/zotero-bridge.md](docs/zotero-bridge.md)，OAuth 与
+远程访问见 [docs/remote-mcp.md](docs/remote-mcp.md)。
 
 [![观看演示](https://img.youtube.com/vi/N9lQaXt1eqQ/maxresdefault.jpg)](https://youtu.be/N9lQaXt1eqQ?si=LyEwvzzQF6QjUxR0)
 
@@ -162,6 +209,7 @@ coding-tools-mcp-desktop
 | 执行 | `exec_command` · `write_stdin` · `read_output` · `kill_command` · `request_permissions` |
 | Git | `git_status` · `git_diff` · `git_log` · `git_show` · `git_blame` |
 | 运行时 | `server_info` · `check_exec_environment` |
+| Zotero | `zotero_search` · `zotero_get_collections` · `zotero_get_collection_items` · `zotero_get_item` · `zotero_get_fulltext` · `zotero_get_annotations` · `zotero_update_item` · `zotero_get_notes` · `zotero_create_note` · `zotero_update_note` · `zotero_delete_note` · `zotero_set_item_collections` · `zotero_write_status` · `zotero_authorize_writes` |
 
 仓库根部的 `AGENTS.md`/`CLAUDE.md` 会自动载入，并随 `initialize` 的
 `instructions` 下发；不握手的客户端则通过 `server/discover` 拿到同一份内容。
@@ -212,7 +260,7 @@ SWE-bench 榜单成绩——[docs/swe-bench.md](docs/swe-bench.md) 写明了测�
 | 远程与沙箱 | [Remote MCP](docs/remote-mcp.md) · [Docker 沙箱](docs/docker.md) · [云沙箱 Worker](cloudflare/sandbox-control/README.md) |
 | 工具与契约 | [工具与 Schema](docs/tools-and-schemas.md) · [运行时契约](docs/runtime-contract-v0.3.md) · [迁移到 0.3](docs/migration-0.3.md) · [权限模式](docs/permission-modes.md) |
 | 命令执行 | [Exec 配方](docs/exec-command-recipes.md) · [Exec 排障](docs/troubleshooting-exec.md) |
-| 集成 | [嵌入指南](docs/embedding.md) · [npm 启动器](npm/coding-tools-mcp/README.md) |
+| 集成 | [嵌入指南](docs/embedding.md) · [Zotero Bridge](docs/zotero-bridge.md) · [npm 启动器](npm/coding-tools-mcp/README.md) |
 | 安全与质量 | [安全策略](SECURITY.md) · [安全边界](docs/security-boundary.md) · [CI 与测试](docs/ci-and-tests.md) · [已知限制](docs/limitations.md) · [竞品分析](docs/competitive-analysis.md) |
 
 ## 开发
@@ -236,3 +284,14 @@ Author: Coding Tools MCP Contributors
 Source: https://github.com/xyTom/coding-tools-mcp
 
 引用元数据见 [CITATION.cff](CITATION.cff)。
+
+## 致谢
+
+本 fork 建立在两个上游项目之上：
+
+- [xyTom/coding-tools-mcp](https://github.com/xyTom/coding-tools-mcp)：原始 Coding
+  Tools MCP 运行时、桌面客户端、安全模型与 MCP transport；
+- [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp)：本地 Zotero Bridge
+  所调用的 Zotero MCP 实现。
+
+重新分发衍生版本时，请继续遵守并保留上游版权、许可证和 NOTICE 要求。

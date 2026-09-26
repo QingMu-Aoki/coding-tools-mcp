@@ -14,31 +14,38 @@
 Coding Tools MCP is a **model-neutral coding runtime** served over the
 [Model Context Protocol](https://modelcontextprotocol.io): file reading and
 search, structured multi-file patches, command execution, interactive
-sessions, and git — one server that any MCP client can drive. Claude Desktop,
-Claude Code, Cursor, Cline, or an agent you build yourself all get the same
-18 battle-tested tools, confined to one workspace, gated by permission modes.
+sessions, and git — one server that any MCP client can drive. The upstream
+runtime provides 18 core tools. This fork's `zotero-bridge` branch adds 14
+curated Zotero tools, for a fixed catalog of 32 tools in total.
 
-## Modified OAuth branch
+## QingMu-Aoki fork: persistent OAuth + Zotero Bridge
 
-This repository includes an `oauth-refresh-persistence` branch based on
-upstream `v0.3.0`. Compared with the original release, it adds:
+This repository is a fork of upstream `coding-tools-mcp` `v0.3.0`. The
+`zotero-bridge` branch includes the earlier `oauth-refresh-persistence` work
+and adds a localhost bridge to [`54yyyu/zotero-mcp`](https://github.com/54yyyu/zotero-mcp).
+
+Compared with upstream `v0.3.0`, this branch adds:
 
 - persistent RFC 7591 dynamic OAuth client registration;
 - OAuth `refresh_token` support;
 - 24-hour access tokens and 30-day refresh tokens by default;
 - absolute refresh-token expiry that does not slide forward on rotation;
-- separate `token_use` claims for access and refresh tokens.
+- separate `token_use` claims for access and refresh tokens;
+- a curated Zotero bridge for search, collections, metadata, full text,
+  annotations, tags, notes, and local write operations;
+- Windows helper scripts for persistent Zotero MCP configuration and logon
+  autostart.
 
-Modified source:
+Fork source:
 
 - Repository: `https://github.com/QingMu-Aoki/coding-tools-mcp`
-- Branch: `oauth-refresh-persistence`
-- Source: `https://github.com/QingMu-Aoki/coding-tools-mcp/tree/oauth-refresh-persistence`
+- Recommended branch: `zotero-bridge`
+- Source: `https://github.com/QingMu-Aoki/coding-tools-mcp/tree/zotero-bridge`
 
-Clone and run the modified branch:
+Clone and install the fork:
 
 ```bash
-git clone --branch oauth-refresh-persistence --single-branch https://github.com/QingMu-Aoki/coding-tools-mcp.git
+git clone --branch zotero-bridge --single-branch https://github.com/QingMu-Aoki/coding-tools-mcp.git
 cd coding-tools-mcp
 python -m pip install -e ".[desktop]"
 coding-tools-mcp-desktop
@@ -46,10 +53,54 @@ coding-tools-mcp-desktop
 
 For a server-only install, use `python -m pip install -e .` and start
 `coding-tools-mcp` normally. The regular PyPI/npm quickstart below installs the
-official published release, not this development branch.
+official upstream release, not this fork branch.
 
-See [docs/remote-mcp.md](docs/remote-mcp.md) for the OAuth configuration and
-refresh-token details.
+### Zotero Bridge setup
+
+The bridge keeps Zotero MCP private on localhost. ChatGPT or another remote MCP
+client connects only to the authenticated `coding-tools-mcp` endpoint:
+
+```text
+ChatGPT / MCP client
+  -> coding-tools-mcp (OAuth / authenticated remote endpoint)
+  -> http://127.0.0.1:8000/mcp
+  -> 54yyyu/zotero-mcp
+  -> Zotero Desktop
+```
+
+Place `54yyyu/zotero-mcp` next to this checkout, for example:
+
+```text
+chatGPT-WEB/
+  coding-tools-mcp/
+  zotero-mcp-main/
+```
+
+Start Zotero Desktop, then start the downstream Zotero MCP:
+
+```powershell
+cd .\coding-tools-mcp
+.\scripts\start-zotero-mcp-local.ps1
+```
+
+The default downstream endpoint is `http://127.0.0.1:8000/mcp`. Do **not**
+expose port 8000 through Cloudflare, ngrok, or another public tunnel. The
+authenticated `coding-tools-mcp` endpoint should remain the only remote entry
+point.
+
+On Windows, optional persistent setup is available with:
+
+```powershell
+.\scripts\install-zotero-mcp-autostart.ps1
+```
+
+This stores `ZOTERO_LOCAL=true`, sets the bridge URL, and creates a per-user
+`Zotero MCP Local` scheduled task at logon. Local writes can be authorized later
+through `zotero_authorize_writes`; Zotero Desktop will ask for confirmation and
+can remember the authorization.
+
+See [docs/zotero-bridge.md](docs/zotero-bridge.md) for the bridge design and
+[docs/remote-mcp.md](docs/remote-mcp.md) for OAuth and remote-access details.
 
 [![Watch the demo](https://img.youtube.com/vi/N9lQaXt1eqQ/maxresdefault.jpg)](https://youtu.be/N9lQaXt1eqQ?si=LyEwvzzQF6QjUxR0)
 
@@ -174,6 +225,7 @@ rollback.
 | Execution | `exec_command` · `write_stdin` · `read_output` · `kill_command` · `request_permissions` |
 | Git | `git_status` · `git_diff` · `git_log` · `git_show` · `git_blame` |
 | Runtime | `server_info` · `check_exec_environment` |
+| Zotero | `zotero_search` · `zotero_get_collections` · `zotero_get_collection_items` · `zotero_get_item` · `zotero_get_fulltext` · `zotero_get_annotations` · `zotero_update_item` · `zotero_get_notes` · `zotero_create_note` · `zotero_update_note` · `zotero_delete_note` · `zotero_set_item_collections` · `zotero_write_status` · `zotero_authorize_writes` |
 
 Root `AGENTS.md`/`CLAUDE.md` files load automatically and come back in the
 `instructions` of `initialize`, or of `server/discover` for a client that
@@ -229,7 +281,7 @@ measured. More: [COMPLIANCE.md](COMPLIANCE.md) · [BENCHMARK.md](BENCHMARK.md) �
 | Remote & sandboxed | [Remote MCP](docs/remote-mcp.md) · [Docker sandbox](docs/docker.md) · [Cloud sandbox worker](cloudflare/sandbox-control/README.md) |
 | Tools & contract | [Tools and schemas](docs/tools-and-schemas.md) · [Runtime contract](docs/runtime-contract-v0.3.md) · [Migrating to 0.3](docs/migration-0.3.md) · [Permission modes](docs/permission-modes.md) |
 | Execution | [Exec recipes](docs/exec-command-recipes.md) · [Exec troubleshooting](docs/troubleshooting-exec.md) |
-| Integration | [Embedding](docs/embedding.md) · [npm launcher](npm/coding-tools-mcp/README.md) |
+| Integration | [Embedding](docs/embedding.md) · [Zotero Bridge](docs/zotero-bridge.md) · [npm launcher](npm/coding-tools-mcp/README.md) |
 | Security & quality | [Security policy](SECURITY.md) · [Security boundary](docs/security-boundary.md) · [CI and tests](docs/ci-and-tests.md) · [Limitations](docs/limitations.md) · [Competitive analysis](docs/competitive-analysis.md) |
 
 ## Development
@@ -254,3 +306,15 @@ Author: Coding Tools MCP Contributors
 Source: https://github.com/xyTom/coding-tools-mcp
 
 Citation metadata is available in [CITATION.cff](CITATION.cff).
+
+## Acknowledgements
+
+This fork builds on two upstream projects:
+
+- [xyTom/coding-tools-mcp](https://github.com/xyTom/coding-tools-mcp) — the
+  original coding runtime, desktop client, safety model, and MCP transport.
+- [54yyyu/zotero-mcp](https://github.com/54yyyu/zotero-mcp) — the Zotero MCP
+  implementation used by the localhost bridge.
+
+Please preserve the upstream copyright, license, and NOTICE requirements when
+redistributing derivative work.
