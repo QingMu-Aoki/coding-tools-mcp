@@ -733,6 +733,37 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         idempotent=True,
         open_world=True,
     ),
+    "zotero_update_item": ToolSpec(
+        title="Update Zotero item metadata",
+        description="Update selected Zotero metadata fields and incrementally add or remove tags.",
+        destructive=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_get_notes": ToolSpec(
+        title="Get Zotero notes",
+        description="List or search Zotero notes; raw HTML is available for safe round-trip editing.",
+        read_only=True,
+        idempotent=True,
+        open_world=True,
+    ),
+    "zotero_create_note": ToolSpec(
+        title="Create Zotero note",
+        description="Create a child note on an existing Zotero item.",
+        open_world=True,
+    ),
+    "zotero_update_note": ToolSpec(
+        title="Update Zotero note",
+        description="Replace or append to an existing Zotero note body.",
+        destructive=True,
+        open_world=True,
+    ),
+    "zotero_delete_note": ToolSpec(
+        title="Trash Zotero note",
+        description="Move a Zotero note to Trash; it remains recoverable in Zotero.",
+        destructive=True,
+        open_world=True,
+    ),
     "zotero_set_item_collections": ToolSpec(
         title="Manage Zotero collection membership",
         description="Add or remove existing Zotero items from collections.",
@@ -1782,6 +1813,26 @@ class Runtime:
 
     def zotero_get_annotations(self, args: dict[str, Any]) -> dict[str, Any]:
         return self._zotero_call("zotero_get_annotations", args)
+
+    def zotero_update_item(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_update_item", args)
+
+    def zotero_get_notes(self, args: dict[str, Any]) -> dict[str, Any]:
+        return self._zotero_call("zotero_get_notes", args)
+
+    def zotero_create_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        payload = {"action": "create", **args}
+        return self._zotero_call("zotero_manage_note", payload)
+
+    def zotero_update_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(args)
+        payload["action"] = "update"
+        payload["item_key"] = payload.pop("note_key")
+        return self._zotero_call("zotero_manage_note", payload)
+
+    def zotero_delete_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        payload = {"action": "delete", "item_key": args["note_key"]}
+        return self._zotero_call("zotero_manage_note", payload)
 
     def zotero_set_item_collections(self, args: dict[str, Any]) -> dict[str, Any]:
         return self._zotero_call("zotero_set_item_collections", args)
@@ -4899,6 +4950,70 @@ def input_schemas() -> dict[str, dict[str, Any]]:
                 "format": {**string, "enum": ["markdown", "json"], "default": "markdown"},
             },
             ["item_key"],
+        ),
+        "zotero_update_item": object_schema(
+            {
+                "item_key": {**string, "minLength": 1},
+                "fields": {
+                    "type": "object",
+                    "properties": {
+                        "title": string,
+                        "date": string,
+                        "doi": string,
+                        "url": string,
+                        "abstract": string,
+                        "publication_title": string,
+                        "access_date": string,
+                        "short_title": string,
+                        "book_title": string,
+                        "citation_key": string,
+                        "place": string,
+                        "extra": string,
+                        "volume": string,
+                        "issue": string,
+                        "pages": string,
+                        "publisher": string,
+                        "issn": string,
+                        "isbn": string,
+                        "edition": string,
+                        "language": string,
+                    },
+                    "additionalProperties": False,
+                },
+                "add_tags": string_array,
+                "remove_tags": string_array,
+            },
+            ["item_key"],
+        ),
+        "zotero_get_notes": object_schema(
+            {
+                "item_key": {**string, "minLength": 1},
+                "query": string,
+                "limit": {**integer, "minimum": 1, "maximum": 500, "default": 20},
+                "truncate": {**boolean, "default": True},
+                "raw_html": {**boolean, "default": False},
+            },
+        ),
+        "zotero_create_note": object_schema(
+            {
+                "item_key": {**string, "minLength": 1},
+                "note_text": {**string, "minLength": 1},
+                "note_title": string,
+                "tags": string_array,
+            },
+            ["item_key", "note_text"],
+        ),
+        "zotero_update_note": object_schema(
+            {
+                "note_key": {**string, "minLength": 1},
+                "note_text": string,
+                "append": {**boolean, "default": False},
+            },
+            ["note_key", "note_text"],
+        ),
+        "zotero_delete_note": object_schema(
+            {"note_key": {**string, "minLength": 1}},
+            ["note_key"],
         ),
         "zotero_set_item_collections": object_schema(
             {

@@ -26,6 +26,11 @@ The downstream URL defaults to `http://127.0.0.1:8000/mcp` and can be changed wi
 - `zotero_get_item`
 - `zotero_get_fulltext`
 - `zotero_get_annotations`
+- `zotero_update_item`
+- `zotero_get_notes`
+- `zotero_create_note`
+- `zotero_update_note`
+- `zotero_delete_note`
 - `zotero_set_item_collections`
 - `zotero_write_status`
 - `zotero_authorize_writes`
@@ -68,10 +73,11 @@ membership changes are annotated mutating/destructive.
 
 ## Scope
 
-This first version intentionally exposes a small Zotero surface. It does not yet expose
-semantic search administration, duplicate merging, Scite, collection creation/deletion,
-metadata editing, note editing, or arbitrary downstream tool forwarding. Add those as
-explicit bridge tools later instead of exposing the complete Zotero MCP tool catalog.
+The bridge intentionally exposes a curated Zotero surface. Metadata editing, incremental
+tag changes, and note read/create/update/trash are available as explicit tools. It still
+does not expose semantic-search administration, duplicate merging, Scite, collection
+creation/deletion, or arbitrary downstream tool forwarding. Add further capabilities as
+explicit bridge tools rather than exposing the complete Zotero MCP tool catalog.
 
 ## Windows persistent/autostart setup
 
