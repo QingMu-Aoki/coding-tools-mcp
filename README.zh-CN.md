@@ -18,6 +18,39 @@ Coding Tools MCP 是一个**模型中立的编程运行时**，通过
 Cline，或你自己写的 agent，拿到的都是同一套久经考验的 18 个工具：
 限定在单一工作区内，由权限模式层层把关。
 
+## 修改版 OAuth 分支
+
+本仓库的 `oauth-refresh-persistence` 分支基于官方 `v0.3.0`。与原版相比，
+主要增加：
+
+- RFC 7591 动态 OAuth 客户端注册持久化；
+- OAuth `refresh_token` 支持；
+- Access token 默认有效 24 小时，refresh token 默认有效 30 天；
+- refresh token 轮换时保留最初的绝对过期时间，不会无限续期；
+- access token 与 refresh token 使用不同的 `token_use` 标记，避免混用。
+
+修改版获取地址：
+
+- 仓库：`https://github.com/QingMu-Aoki/coding-tools-mcp`
+- 分支：`oauth-refresh-persistence`
+- 源码：`https://github.com/QingMu-Aoki/coding-tools-mcp/tree/oauth-refresh-persistence`
+
+直接获取并运行修改版：
+
+```bash
+git clone --branch oauth-refresh-persistence --single-branch https://github.com/QingMu-Aoki/coding-tools-mcp.git
+cd coding-tools-mcp
+python -m pip install -e ".[desktop]"
+coding-tools-mcp-desktop
+```
+
+如果只需要服务器，可以执行 `python -m pip install -e .`，然后像原版一样启动
+`coding-tools-mcp`。下面原有的 PyPI/npm 快速安装命令安装的是官方发布版，
+不是这个开发分支。
+
+OAuth 的完整配置与 refresh token 说明见
+[docs/remote-mcp.md](docs/remote-mcp.md)。
+
 [![观看演示](https://img.youtube.com/vi/N9lQaXt1eqQ/maxresdefault.jpg)](https://youtu.be/N9lQaXt1eqQ?si=LyEwvzzQF6QjUxR0)
 
 ## 为什么用它

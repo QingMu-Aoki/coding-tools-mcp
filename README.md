@@ -18,6 +18,39 @@ sessions, and git — one server that any MCP client can drive. Claude Desktop,
 Claude Code, Cursor, Cline, or an agent you build yourself all get the same
 18 battle-tested tools, confined to one workspace, gated by permission modes.
 
+## Modified OAuth branch
+
+This repository includes an `oauth-refresh-persistence` branch based on
+upstream `v0.3.0`. Compared with the original release, it adds:
+
+- persistent RFC 7591 dynamic OAuth client registration;
+- OAuth `refresh_token` support;
+- 24-hour access tokens and 30-day refresh tokens by default;
+- absolute refresh-token expiry that does not slide forward on rotation;
+- separate `token_use` claims for access and refresh tokens.
+
+Modified source:
+
+- Repository: `https://github.com/QingMu-Aoki/coding-tools-mcp`
+- Branch: `oauth-refresh-persistence`
+- Source: `https://github.com/QingMu-Aoki/coding-tools-mcp/tree/oauth-refresh-persistence`
+
+Clone and run the modified branch:
+
+```bash
+git clone --branch oauth-refresh-persistence --single-branch https://github.com/QingMu-Aoki/coding-tools-mcp.git
+cd coding-tools-mcp
+python -m pip install -e ".[desktop]"
+coding-tools-mcp-desktop
+```
+
+For a server-only install, use `python -m pip install -e .` and start
+`coding-tools-mcp` normally. The regular PyPI/npm quickstart below installs the
+official published release, not this development branch.
+
+See [docs/remote-mcp.md](docs/remote-mcp.md) for the OAuth configuration and
+refresh-token details.
+
 [![Watch the demo](https://img.youtube.com/vi/N9lQaXt1eqQ/maxresdefault.jpg)](https://youtu.be/N9lQaXt1eqQ?si=LyEwvzzQF6QjUxR0)
 
 ## Why people use it
