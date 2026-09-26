@@ -72,3 +72,24 @@ This first version intentionally exposes a small Zotero surface. It does not yet
 semantic search administration, duplicate merging, Scite, collection creation/deletion,
 metadata editing, note editing, or arbitrary downstream tool forwarding. Add those as
 explicit bridge tools later instead of exposing the complete Zotero MCP tool catalog.
+
+## Windows persistent/autostart setup
+
+Run once:
+
+```powershell
+.\scripts\install-zotero-mcp-autostart.ps1
+```
+
+This stores these user-level variables permanently:
+
+```text
+ZOTERO_LOCAL=true
+ZOTERO_MCP_URL=http://127.0.0.1:8000/mcp
+```
+
+It also creates the per-user scheduled task `Zotero MCP Local`, triggered at Windows logon.
+The background launcher exits cleanly when port 8000 is already listening, so manually
+starting Zotero MCP and the scheduled task do not create duplicate servers.
+
+Logs for automatic starts are written to `%LOCALAPPDATA%\zotero-mcp-bridge\zotero-mcp.log`.
